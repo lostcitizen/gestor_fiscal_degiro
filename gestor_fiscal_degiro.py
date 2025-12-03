@@ -232,16 +232,31 @@ def analyze_market_data(pf, sort_by='pnl', ascending=False):
         for t in tickers: 
             try: currs[t] = yf.Ticker(t).fast_info['currency']
             except: currs[t] = 'EUR'
+            
+        print("Precio: Buscando el último cierre válido para cada Ticker...")
         
-        # Precios actuales
-        data = yf.download(tickers, period="1d", progress=False, auto_adjust=False)['Close']
         for t in tickers:
-            try: 
-                val = data[t].iloc[-1] if isinstance(data, pd.DataFrame) else data.iloc[-1]
-                prices[t] = float(val)
-            except: prices[t] = 0.0
+            try:
+                # 1. Obtener el histórico de los últimos 5 días.
+                data = yf.Ticker(t).history(period="5d", auto_adjust=False)
+                
+                # 2. Tomar el último valor de 'Close' que NO sea NaN
+                #    .ffill() rellena NaNs con el último valor anterior válido.
+                #    .iloc[-1] toma el último registro.
+                val = data['Close'].ffill().iloc[-1]
+                
+                # 3. Comprobar si el valor es válido (no NaN y mayor que cero)
+                if pd.isna(val) or val <= 0.0:
+                    prices[t] = 0.0
+                else:
+                    prices[t] = float(val)
+                    
+            except Exception as e:
+                prices[t] = 0.0
+                # print(f"❌ Error al procesar el precio de {t}: {e}") # Descomentar para debug
+
     except Exception as e:
-        print(f"{Colors.RED}Error de conexión: {e}{Colors.RESET}")
+        print(f"{Colors.RED}Error de conexión general: {e}{Colors.RESET}")
 
     # 3. Tipos de Cambio
     fx = get_exchange_rates(set(currs.values()))
@@ -252,6 +267,7 @@ def analyze_market_data(pf, sort_by='pnl', ascending=False):
         t = row['Ticker']
         qty = row['Qty']
         curr = currs.get(t, 'EUR')
+        # Si el precio no pudo resolverse, prices.get(t, 0) devuelve 0, evitando NaN.
         price_loc = prices.get(t, 0)
         
         # Conversión a EUR
@@ -266,7 +282,7 @@ def analyze_market_data(pf, sort_by='pnl', ascending=False):
         final_rows.append({
             'Ticker': t, 
             'Product': row['Product'], 
-            'Qty': qty,
+            'Qty': qty, 
             'Price_Eur': price_eur, 
             'Avg_Cost': row['Avg_Cost'],
             'PnL': pnl, 
