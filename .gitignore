@@ -1,1 +1,5 @@
 *.csv
+historial_completo.txt
+DASHBOARD.html
+db_fiscal.json
+informes/
