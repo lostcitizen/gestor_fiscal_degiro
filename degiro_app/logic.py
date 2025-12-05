@@ -82,6 +82,7 @@ def find_opa_cash(df_acc, isin, date_ref):
 def process_year(df_trans, df_acc, target_year):
     portfolio = {} 
     sales_report = []
+    purchases_report = [] # Nueva lista para compras
     fees_report = {'trading': 0.0, 'connectivity': 0.0}
     stats = {'wins': 0, 'losses': 0, 'blocked': 0}
     
@@ -106,7 +107,21 @@ def process_year(df_trans, df_acc, target_year):
         if qty > 0: # COMPRA
             cost = abs(total_eur)
             unit_cost = cost / qty if qty > 0 else 0
+            
+            # Registrar batch FIFO
             portfolio[isin]['batches'].append({'qty': qty, 'unit_cost': unit_cost, 'date': date})
+            
+            # Registrar en reporte de Compras (Solo si es del año target)
+            if date.year == target_year:
+                purchases_report.append({
+                    'date': row['date'],
+                    'product': prod,
+                    'isin': isin,
+                    'qty': qty,
+                    'price': unit_cost,
+                    'total': cost,
+                    'fee': fee_eur
+                })
             
         elif qty < 0: # VENTA
             qty_sold = abs(qty)
@@ -193,8 +208,14 @@ def process_year(df_trans, df_acc, target_year):
     total_pnl = sum(s['pnl'] for s in sales_report if not s['blocked'])
 
     return {
-        'sales': sales_report, 'dividends': clean_divs, 'portfolio': clean_port,
-        'portfolio_value': port_val, 'total_pnl': total_pnl, 'fees': fees_report, 'stats': stats
+        'sales': sales_report, 
+        'purchases': purchases_report, # Nuevo
+        'dividends': clean_divs, 
+        'portfolio': clean_port,
+        'portfolio_value': port_val, 
+        'total_pnl': total_pnl, 
+        'fees': fees_report, 
+        'stats': stats
     }
 
 # --- ANÁLISIS GLOBAL ---
@@ -202,10 +223,7 @@ def analyze_full_history(trans_path, acc_path):
     df_t, df_a = load_data_frames(trans_path, acc_path)
     if df_t.empty: return {}
 
-    # Detección automática del rango de años basado en datos reales
     start_year = df_t['date_obj'].min().year
-    
-    # El último año es el máximo entre los datos y la fecha actual (por si acaso)
     max_data_year = df_t['date_obj'].max().year
     current_year = datetime.now().year
     end_year = max(max_data_year, current_year)
@@ -222,8 +240,11 @@ def analyze_full_history(trans_path, acc_path):
     for year in processed_years:
         data = process_year(df_t, df_a, year)
         
-        # Guardamos si hay actividad o si es el último año (para asegurar estado final)
-        if data['sales'] or data['dividends'] or data['portfolio'] or data['fees']['connectivity'] > 0 or year == end_year:
+        # Guardamos si hay actividad o si es el último año
+        has_activity = (data['sales'] or data['purchases'] or data['dividends'] or 
+                        data['portfolio'] or data['fees']['connectivity'] > 0)
+        
+        if has_activity or year == end_year:
             years_data[year] = data
             
             divs_net = sum(d['net'] for d in data['dividends'])
@@ -238,7 +259,6 @@ def analyze_full_history(trans_path, acc_path):
             global_stats['chart_divs'].append(round(divs_net, 2))
             global_stats['chart_fees'].append(round(total_fees, 2))
 
-    # Cargar la foto final de la cartera (del último año procesado)
     if global_stats['years_list']:
         last_year = global_stats['years_list'][-1]
         global_stats['current_portfolio'] = years_data[last_year]['portfolio']
