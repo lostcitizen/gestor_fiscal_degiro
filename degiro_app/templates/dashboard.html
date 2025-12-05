@@ -27,20 +27,20 @@
         .navbar { background-color: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
         .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .kpi-val { font-size: 1.8rem; font-weight: 700; margin-top: 5px; color: #fff; }
+        .kpi-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; margin-top: -2px; }
         .kpi-lbl { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
 
-        /* Tables - FULL HEIGHT MOD */
+        /* Tables - NO SCROLL LIMIT */
         .table { --bs-table-bg: transparent; color: var(--text-light); margin-bottom: 0; }
+        .table-responsive { overflow: visible; } 
+        
         .table thead th { 
-            background-color: var(--bg-card); /* Match card bg */
+            background-color: var(--bg-card); 
             color: var(--text-muted); 
             font-size: 0.85rem; 
             border-bottom: 2px solid var(--border-color); 
             cursor: pointer; user-select: none;
-            /* Sticky header relative to window */
-            position: sticky;
-            top: 0;
-            z-index: 10;
+            position: sticky; top: 0; z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .table thead th:hover { color: #fff; background-color: #334155; }
@@ -57,9 +57,6 @@
         .nav-pills .nav-link.active { background-color: var(--accent-blue); color: white; }
         .nav-pills .nav-link { color: var(--text-muted); }
         .badge-custom { font-weight: 500; font-size: 0.75rem; cursor: help; }
-        
-        /* Remove table responsive limits */
-        .table-responsive { overflow-x: auto; overflow-y: visible; }
     </style>
 </head>
 <body>
@@ -84,7 +81,13 @@
     <div id="globalView">
         <h4 class="fw-light text-secondary mb-4">Resumen Histórico</h4>
         <div class="row g-4 mb-4">
-            <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">P&L Acumulado (Ventas)</div><div id="g-pnl" class="kpi-val"></div></div></div>
+            <div class="col-md-3">
+                <div class="card p-4">
+                    <div class="kpi-lbl">P&L Fiscal (Compensable)</div>
+                    <div id="g-pnl" class="kpi-val"></div>
+                    <div id="g-pnl-real" class="kpi-sub"></div>
+                </div>
+            </div>
             <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">Dividendos Totales (Neto)</div><div id="g-divs" class="kpi-val text-success-custom"></div></div></div>
             <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">Gastos Totales</div><div id="g-fees" class="kpi-val text-warning"></div></div></div>
             <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">Valor Actual Cartera</div><div id="g-port" class="kpi-val text-info"></div></div></div>
@@ -131,11 +134,22 @@
     <div id="yearView" class="d-none">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="fw-bold text-white"><span id="lblYear" class="text-primary"></span> <span class="fw-light text-muted">| Detalle</span></h4>
-            <button class="btn btn-outline-secondary btn-sm" onclick="showGlobalView()">← Volver al Global</button>
+            <div>
+                <a id="btnDownload" href="#" class="btn btn-primary btn-sm me-2">
+                    <i class="bi bi-file-earmark-zip me-1"></i> Descargar Informe (ZIP)
+                </a>
+                <button class="btn btn-outline-secondary btn-sm" onclick="showGlobalView()">← Volver al Global</button>
+            </div>
         </div>
 
         <div class="row g-3 mb-4">
-            <div class="col-md-3"><div class="card p-3"><small class="text-muted">P&L Año</small><div id="y-pnl" class="fs-4 fw-bold text-white"></div></div></div>
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <small class="text-muted">P&L Fiscal (Renta)</small>
+                    <div id="y-pnl" class="fs-4 fw-bold text-white"></div>
+                    <div id="y-pnl-real" class="small text-muted"></div>
+                </div>
+            </div>
             <div class="col-md-3"><div class="card p-3"><small class="text-muted">Dividendos</small><div id="y-divs" class="fs-4 fw-bold text-green"></div></div></div>
             <div class="col-md-3"><div class="card p-3"><small class="text-muted">Cartera (Fin Año)</small><div id="y-port" class="fs-4 fw-bold text-info"></div></div></div>
             <div class="col-md-3"><div class="card p-3"><small class="text-muted">Gastos</small><div id="y-fees" class="fs-4 fw-bold text-warning"></div></div></div>
@@ -331,15 +345,19 @@
     // --- GLOBAL ---
     function initGlobal() {
         const g = rawData.global;
+        
+        // P&L Dual Display
         document.getElementById('g-pnl').innerText = fmt(g.total_pnl);
         document.getElementById('g-pnl').className = `kpi-val ${g.total_pnl>=0?'text-green':'text-red'}`;
+        document.getElementById('g-pnl-real').innerText = `Real (Financiero): ${fmt(g.total_pnl_real)}`;
+
         document.getElementById('g-divs').innerText = fmt(g.total_divs_net);
         document.getElementById('g-fees').innerText = fmt(g.total_fees);
         document.getElementById('g-port').innerText = fmt(g.current_portfolio_value);
 
         if(globalChart) globalChart.destroy();
         globalChart = new ApexCharts(document.querySelector("#chartGlobalMain"), {
-            series: [{ name: 'P&L Ventas', type: 'column', data: g.chart_pnl }, { name: 'Dividendos', type: 'line', data: g.chart_divs }],
+            series: [{ name: 'P&L Real (Ventas)', type: 'column', data: g.chart_pnl }, { name: 'Dividendos', type: 'line', data: g.chart_divs }],
             chart: { 
                 height: 350, type: 'line', toolbar: {show: false}, background: 'transparent',
                 events: { dataPointSelection: (e, c, cfg) => { 
@@ -390,9 +408,15 @@
         document.getElementById('globalView').classList.add('d-none');
         document.getElementById('yearView').classList.remove('d-none');
         document.getElementById('lblYear').innerText = year;
+        
+        // ACTUALIZA EL ENLACE DE DESCARGA
+        document.getElementById('btnDownload').href = `/download/${year}`;
 
+        // P&L Year Dual Display
         document.getElementById('y-pnl').innerText = fmt(d.total_pnl);
         document.getElementById('y-pnl').className = `fs-4 fw-bold ${d.total_pnl>=0?'text-green':'text-red'}`;
+        document.getElementById('y-pnl-real').innerText = `Real (Financiero): ${fmt(d.total_pnl_real)}`;
+
         let divSum = d.dividends.reduce((acc, x) => acc + x.net, 0);
         document.getElementById('y-divs').innerText = fmt(divSum);
         document.getElementById('y-port').innerText = fmt(d.portfolio_value);
@@ -431,7 +455,6 @@
                 badge = `<span class="badge badge-custom bg-danger bg-opacity-25 text-danger border border-danger" 
                          data-bs-toggle="tooltip" data-bs-placement="top" title="${getTooltipText('BLOQ')}">BLOQUEADO</span>`;
             } else if(s.note) {
-                // If it contains specific keywords, use tooltip logic
                 let tooltipContent = getTooltipText(s.note);
                 let displayNote = s.note.replace('⚠️ NO ADQ ', '');
                 badge = `<span class="badge badge-custom bg-info bg-opacity-10 text-info border border-info"
