@@ -26,11 +26,13 @@
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-body); color: var(--text-light); padding-bottom: 80px; }
         .navbar { background-color: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
         .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+        /* KPIs */
         .kpi-val { font-size: 1.8rem; font-weight: 700; margin-top: 5px; color: #fff; }
         .kpi-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; margin-top: -2px; }
         .kpi-lbl { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
 
-        /* Tables - NO SCROLL LIMIT */
+        /* Tables - FULL HEIGHT MODE */
         .table { --bs-table-bg: transparent; color: var(--text-light); margin-bottom: 0; }
         .table-responsive { overflow: visible; } 
         
@@ -40,6 +42,7 @@
             font-size: 0.85rem; 
             border-bottom: 2px solid var(--border-color); 
             cursor: pointer; user-select: none;
+            /* Sticky Header */
             position: sticky; top: 0; z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
@@ -82,15 +85,15 @@
         <h4 class="fw-light text-secondary mb-4">Resumen Histórico</h4>
         <div class="row g-4 mb-4">
             <div class="col-md-3">
-                <div class="card p-4">
+                <div class="card p-4 h-100">
                     <div class="kpi-lbl">P&L Fiscal (Compensable)</div>
                     <div id="g-pnl" class="kpi-val"></div>
                     <div id="g-pnl-real" class="kpi-sub"></div>
                 </div>
             </div>
-            <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">Dividendos Totales (Neto)</div><div id="g-divs" class="kpi-val text-success-custom"></div></div></div>
-            <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">Gastos Totales</div><div id="g-fees" class="kpi-val text-warning"></div></div></div>
-            <div class="col-md-3"><div class="card p-4"><div class="kpi-lbl">Valor Actual Cartera</div><div id="g-port" class="kpi-val text-info"></div></div></div>
+            <div class="col-md-3"><div class="card p-4 h-100"><div class="kpi-lbl">Dividendos Totales (Neto)</div><div id="g-divs" class="kpi-val text-success-custom"></div></div></div>
+            <div class="col-md-3"><div class="card p-4 h-100"><div class="kpi-lbl">Gastos Totales</div><div id="g-fees" class="kpi-val text-warning"></div></div></div>
+            <div class="col-md-3"><div class="card p-4 h-100"><div class="kpi-lbl">Valor Actual Cartera</div><div id="g-port" class="kpi-val text-info"></div></div></div>
         </div>
 
         <div class="row g-4 mb-4">
@@ -144,15 +147,15 @@
 
         <div class="row g-3 mb-4">
             <div class="col-md-3">
-                <div class="card p-3">
+                <div class="card p-3 h-100">
                     <small class="text-muted">P&L Fiscal (Renta)</small>
                     <div id="y-pnl" class="fs-4 fw-bold text-white"></div>
                     <div id="y-pnl-real" class="small text-muted"></div>
                 </div>
             </div>
-            <div class="col-md-3"><div class="card p-3"><small class="text-muted">Dividendos</small><div id="y-divs" class="fs-4 fw-bold text-green"></div></div></div>
-            <div class="col-md-3"><div class="card p-3"><small class="text-muted">Cartera (Fin Año)</small><div id="y-port" class="fs-4 fw-bold text-info"></div></div></div>
-            <div class="col-md-3"><div class="card p-3"><small class="text-muted">Gastos</small><div id="y-fees" class="fs-4 fw-bold text-warning"></div></div></div>
+            <div class="col-md-3"><div class="card p-3 h-100"><small class="text-muted">Dividendos</small><div id="y-divs" class="fs-4 fw-bold text-green"></div></div></div>
+            <div class="col-md-3"><div class="card p-3 h-100"><small class="text-muted">Cartera (Fin Año)</small><div id="y-port" class="fs-4 fw-bold text-info"></div></div></div>
+            <div class="col-md-3"><div class="card p-3 h-100"><small class="text-muted">Gastos</small><div id="y-fees" class="fs-4 fw-bold text-warning"></div></div></div>
         </div>
 
         <div class="card">
@@ -409,7 +412,7 @@
         document.getElementById('yearView').classList.remove('d-none');
         document.getElementById('lblYear').innerText = year;
         
-        // ACTUALIZA EL ENLACE DE DESCARGA
+        // Update Download Button Link
         document.getElementById('btnDownload').href = `/download/${year}`;
 
         // P&L Year Dual Display
