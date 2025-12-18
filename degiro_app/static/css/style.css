@@ -1,0 +1,119 @@
+/* Static css file for the app */
+:root {
+    --bg-body: #0f172a;
+    --bg-card: #1e293b;
+    --border-color: #334155;
+    --text-muted: #94a3b8;
+    --text-light: #e2e8f0;
+    --accent-green: #10b981;
+    --accent-red: #ef4444;
+    --accent-blue: #3b82f6;
+}
+
+/* Common body styles */
+body {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    color: var(--text-light);
+    background-color: var(--bg-body);
+}
+
+/* Scoped styles for the index page */
+.page-index {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Scoped styles for the dashboard page */
+.page-dashboard {
+    padding-bottom: 80px;
+}
+
+
+/* --- Component Styles --- */
+
+.upload-card { /* From index.html */
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    max-width: 450px;
+    width: 100%;
+}
+.form-control { /* From index.html */
+    background-color: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 12px;
+}
+.form-control:focus { /* From index.html */
+    background-color: rgba(15, 23, 42, 0.8);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+}
+.btn-upload { /* From index.html */
+    background: linear-gradient(to right, #3b82f6, #2563eb);
+    border: none;
+    padding: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+}
+.btn-upload:hover { /* From index.html */
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+}
+.icon-box { /* From index.html */
+    width: 60px;
+    height: 60px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: #3b82f6;
+}
+
+/* Dashboard specific styles */
+.navbar { background-color: rgba(30, 41, 59, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); }
+.card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+/* KPIs */
+.kpi-val { font-size: 1.8rem; font-weight: 700; margin-top: 5px; color: #fff; }
+.kpi-sub { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; margin-top: -2px; }
+.kpi-lbl { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+
+/* Tables - FULL HEIGHT MODE */
+.table { --bs-table-bg: transparent; color: var(--text-light); margin-bottom: 0; }
+.table-responsive { overflow: visible; } 
+
+.table thead th { 
+    background-color: var(--bg-card); 
+    color: var(--text-muted); 
+    font-size: 0.85rem; 
+    border-bottom: 2px solid var(--border-color); 
+    cursor: pointer; user-select: none;
+    /* Sticky Header */
+    position: sticky; top: 0; z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.table thead th:hover { color: #fff; background-color: #334155; }
+.table-hover tbody tr:hover { background-color: #334155 !important; cursor: default; }
+
+.sort-icon { font-size: 0.75rem; margin-left: 5px; opacity: 0.3; }
+.th-active .sort-icon { opacity: 1; color: var(--accent-blue); }
+.th-active { color: var(--accent-blue) !important; }
+
+/* Colors & Badges */
+.text-green { color: var(--accent-green) !important; } 
+.text-red { color: var(--accent-red) !important; } 
+.text-magenta { color: #d500f9 !important; }
+.nav-pills .nav-link.active { background-color: var(--accent-blue); color: white; }
+.nav-pills .nav-link { color: var(--text-muted); }
+.badge-custom { font-weight: 500; font-size: 0.75rem; cursor: help; }

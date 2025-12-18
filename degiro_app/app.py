@@ -3,12 +3,13 @@ import io
 import csv
 import zipfile
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
-from logic import load_data_frames, analyze_full_history
+from .logic import load_data_frames, analyze_full_history
+from degiro_app.config import Config
 
 app = Flask(__name__)
-app.secret_key = 'secreto_fiscal'
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config.from_object(Config)
+app.config.setdefault('UPLOAD_FOLDER', 'degiro_app/uploads')
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Base de datos en memoria
 DB_CACHE = {}
@@ -22,8 +23,8 @@ def index():
         acc = request.files['account']
         trans = request.files['transactions']
         
-        acc_path = os.path.join(UPLOAD_FOLDER, 'Account.csv')
-        trans_path = os.path.join(UPLOAD_FOLDER, 'Transactions.csv')
+        acc_path = os.path.join(app.config['UPLOAD_FOLDER'], 'Account.csv')
+        trans_path = os.path.join(app.config['UPLOAD_FOLDER'], 'Transactions.csv')
         acc.save(acc_path)
         trans.save(trans_path)
 
@@ -127,4 +128,4 @@ def fmt_num(val):
     return f"{val:.2f}".replace('.', ',')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=app.config['DEBUG'])

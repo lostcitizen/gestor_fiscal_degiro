@@ -1,5 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+venv/
+env/
+
+# IDE / Editor
+.idea/
+.vscode/
+
+# Project specific
 *.csv
 historial_completo.txt
-DASHBOARD.html
 db_fiscal.json
 informes/
+degiro_app/uploads/
+degiro_app/uploads/
