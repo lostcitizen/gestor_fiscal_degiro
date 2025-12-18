@@ -8,15 +8,31 @@ def clean_number(x):
     s = str(x).strip().replace('"', '')
     if not s: return 0.0
     s = re.sub(r'[^\d,\.-]', '', s)
-    if '.' in s and ',' in s: s = s.replace('.', '').replace(',', '.')
-    elif ',' in s: s = s.replace(',', '.')
+    
+    # If both separators are present, decide which is decimal
+    if '.' in s and ',' in s:
+        # The one that appears last is the decimal separator
+        if s.rfind('.') > s.rfind(','):
+            s = s.replace(',', '') # Comma is thousands separator
+        else:
+            s = s.replace('.', '') # Period is thousands separator
+            s = s.replace(',', '.') # Comma is decimal separator
+    elif ',' in s:
+        # If only comma is present, assume it's the decimal separator
+        s = s.replace(',', '.')
+    elif '.' in s:
+        parts = s.split('.')
+        # If there are multiple dots, or one dot with 3 digits after it, treat as thousands separators
+        if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) == 3):
+             s = s.replace('.', '')
+        
     try: return float(s)
-    except: return 0.0
+    except (ValueError, TypeError): return 0.0
 
-def load_data_frames(trans_path, acc_path):
+def load_data_frames(trans_stream, acc_stream):
     try:
-        df_t = pd.read_csv(trans_path, sep=',', keep_default_na=False, quotechar='"')
-    except: return pd.DataFrame(), pd.DataFrame()
+        df_t = pd.read_csv(trans_stream, sep=',', keep_default_na=False, quotechar='"')
+    except Exception: return pd.DataFrame(), pd.DataFrame()
     
     df_t.columns = [c.strip() for c in df_t.columns]
     col_map_t = {}
@@ -30,6 +46,11 @@ def load_data_frames(trans_path, acc_path):
         elif 'Costes' in c or 'Comisión' in c: col_map_t[c] = 'fee_eur'
 
     df_t = df_t.rename(columns=col_map_t)
+
+    required_cols = ['date', 'isin', 'product', 'qty', 'total_eur']
+    if not all(col in df_t.columns for col in required_cols):
+        return pd.DataFrame(), pd.DataFrame()
+
     if 'fee_eur' not in df_t.columns: df_t['fee_eur'] = 0.0
     
     df_t['qty'] = df_t['qty'].apply(clean_number)
@@ -39,8 +60,8 @@ def load_data_frames(trans_path, acc_path):
     df_t = df_t.dropna(subset=['date_obj']).sort_values(by=['date_obj', 'time']).reset_index(drop=True)
 
     try:
-        df_a = pd.read_csv(acc_path, sep=',', keep_default_na=False)
-    except: return df_t, pd.DataFrame()
+        df_a = pd.read_csv(acc_stream, sep=',', keep_default_na=False)
+    except Exception: return df_t, pd.DataFrame()
 
     df_a.columns = [c.strip() for c in df_a.columns]
     amt_col = 'amount_fix'
@@ -62,12 +83,48 @@ def load_data_frames(trans_path, acc_path):
 
     return df_t, df_a
 
-def check_anti_aplicacion(isin, sale_date, all_transactions):
+def check_anti_aplicacion(isin, row_index, all_transactions, min_batch_date=None):
+    sale_row = all_transactions.loc[row_index]
+    sale_date = sale_row['date_obj']
     start = sale_date - timedelta(days=62)
     end = sale_date + timedelta(days=62)
-    mask = (all_transactions['isin'] == isin) & (all_transactions['qty'] > 0) & \
-           (all_transactions['date_obj'] >= start) & (all_transactions['date_obj'] <= end)
-    return not all_transactions[mask].empty
+    
+    # Common mask for ISIN and Time Window
+    mask_window = (all_transactions['isin'] == isin) & \
+                  (all_transactions['date_obj'] >= start) & \
+                  (all_transactions['date_obj'] <= end)
+    
+    df_window = all_transactions[mask_window]
+    
+    # Future Purchases: Index > row_index
+    purchases_future = df_window[(df_window.index > row_index) & (df_window['qty'] > 0)]['qty'].sum()
+    
+    if purchases_future > 0:
+        return True
+
+    # Check for "Old Shares Sold, New Shares Kept" scenario
+    if min_batch_date and min_batch_date < start:
+        # If we sold shares acquired BEFORE the window, any purchase INSIDE the window 
+        # (before the sale) means we are holding onto those new shares while realizing a loss on old ones.
+        purchases_in_window_before_sale = df_window[
+            (df_window.index <= row_index) & 
+            (df_window['qty'] > 0)
+        ]['qty'].sum()
+        
+        if purchases_in_window_before_sale > 0:
+            return True
+
+    # Standard check (Net flow in window)
+    # Past Purchases: Index <= row_index
+    purchases_past = df_window[(df_window.index <= row_index) & (df_window['qty'] > 0)]['qty'].sum()
+    
+    # Past Sales: Index <= row_index (including current)
+    sales_past = abs(df_window[(df_window.index <= row_index) & (df_window['qty'] < 0)]['qty'].sum())
+    
+    if purchases_past - sales_past > 0.001:
+        return True
+        
+    return False
 
 def find_opa_cash(df_acc, isin, date_ref):
     if df_acc.empty: return 0.0
@@ -78,6 +135,31 @@ def find_opa_cash(df_acc, isin, date_ref):
     matches = df_acc[mask]
     return matches['amount_fix'].sum() if not matches.empty else 0.0
 
+def calculate_fifo_cost(batches, shares_to_sell):
+    cost_basis = 0.0
+    warning = False
+    min_date = None
+    
+    while shares_to_sell > 0.0001:
+        if not batches:
+            warning = True
+            break
+        
+        batch = batches[0]
+        if min_date is None:
+            min_date = batch['date']
+            
+        if batch['qty'] > shares_to_sell:
+            cost_basis += shares_to_sell * batch['unit_cost']
+            batch['qty'] -= shares_to_sell
+            shares_to_sell = 0
+        else:
+            cost_basis += batch['qty'] * batch['unit_cost']
+            shares_to_sell -= batch['qty']
+            batches.pop(0)
+            
+    return cost_basis, warning, min_date
+
 # --- PROCESAMIENTO ANUAL ---
 def process_year(df_trans, df_acc, target_year):
     portfolio = {} 
@@ -86,7 +168,7 @@ def process_year(df_trans, df_acc, target_year):
     fees_report = {'trading': 0.0, 'connectivity': 0.0}
     stats = {'wins': 0, 'losses': 0, 'blocked': 0}
     
-    for _, row in df_trans.iterrows():
+    for idx, row in df_trans.iterrows():
         date = row['date_obj']
         if date.year > target_year: break
             
@@ -128,37 +210,38 @@ def process_year(df_trans, df_acc, target_year):
             sale_proceeds = total_eur
             
             event_type = ""
-            if "RTS" in prod.upper() or "DERECHO" in prod.upper(): event_type = "DERECHOS"
-            elif abs(sale_proceeds) < 0.1:
+            if "RTS" in prod.upper() or "DERECHO" in prod.upper():
+                event_type = "DERECHOS"
+            elif "OPA" in prod.upper() or "FUSION" in prod.upper():
                 found_cash = find_opa_cash(df_acc, isin, date)
                 if found_cash > 0:
                     sale_proceeds = found_cash
-                    event_type = "OPA/FUSIÓN"
-                else:
-                    event_type = "CANJE/SPLIT"
+                event_type = "OPA/FUSIÓN"
+            elif "CANJE" in prod.upper() or "SPLIT" in prod.upper():
+                 event_type = "CANJE/SPLIT"
+            elif abs(sale_proceeds) < 0.1: # Fallback for other nominal/zero-cash events
+                 event_type = "CANJE/SPLIT"
 
             shares_to_sell = qty_sold
             cost_basis = 0.0
+            min_batch_date = None
             warning = False
             
-            while shares_to_sell > 0.0001:
-                if not portfolio[isin]['batches']:
-                    warning = True; break
-                batch = portfolio[isin]['batches'][0]
-                if batch['qty'] > shares_to_sell:
-                    cost_basis += shares_to_sell * batch['unit_cost']
-                    batch['qty'] -= shares_to_sell
-                    shares_to_sell = 0
-                else:
-                    cost_basis += batch['qty'] * batch['unit_cost']
-                    shares_to_sell -= batch['qty']
-                    portfolio[isin]['batches'].pop(0)
+            if event_type == "DERECHOS":
+                cost_basis = 0.0
+            else:
+                cost_basis, warning, min_batch_date = calculate_fifo_cost(portfolio[isin]['batches'], shares_to_sell)
             
             if date.year == target_year:
                 pnl = sale_proceeds - cost_basis
+                
+                if event_type == "DERECHOS":
+                    cost_basis = 0.0
+                    pnl = sale_proceeds - cost_basis 
+
                 is_blocked = False
                 if pnl < 0:
-                    is_blocked = check_anti_aplicacion(isin, date, df_trans)
+                    is_blocked = check_anti_aplicacion(isin, idx, df_trans, min_batch_date)
                     if is_blocked:
                         event_type = f"⚠️ BLOQ (2 Meses) {event_type}"
                         stats['blocked'] += abs(pnl)
@@ -219,8 +302,8 @@ def process_year(df_trans, df_acc, target_year):
     }
 
 # --- ANÁLISIS GLOBAL ---
-def analyze_full_history(trans_path, acc_path):
-    df_t, df_a = load_data_frames(trans_path, acc_path)
+def analyze_full_history(trans_stream, acc_stream):
+    df_t, df_a = load_data_frames(trans_stream, acc_stream)
     if df_t.empty: return {}
 
     start_year = df_t['date_obj'].min().year

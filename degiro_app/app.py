@@ -9,7 +9,6 @@ from degiro_app.config import Config
 app = Flask(__name__)
 app.config.from_object(Config)
 app.config.setdefault('UPLOAD_FOLDER', 'degiro_app/uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Base de datos en memoria
 DB_CACHE = {}
@@ -20,16 +19,15 @@ def index():
         if 'account' not in request.files or 'transactions' not in request.files:
             return "Faltan archivos", 400
         
-        acc = request.files['account']
-        trans = request.files['transactions']
-        
-        acc_path = os.path.join(app.config['UPLOAD_FOLDER'], 'Account.csv')
-        trans_path = os.path.join(app.config['UPLOAD_FOLDER'], 'Transactions.csv')
-        acc.save(acc_path)
-        trans.save(trans_path)
+        acc_file = request.files['account']
+        trans_file = request.files['transactions']
+
+        # Decode the file streams as text
+        acc_stream = io.StringIO(acc_file.stream.read().decode("UTF8"))
+        trans_stream = io.StringIO(trans_file.stream.read().decode("UTF8"))
 
         # Analizar y guardar en memoria
-        full_data = analyze_full_history(trans_path, acc_path)
+        full_data = analyze_full_history(trans_stream, acc_stream)
         DB_CACHE['data'] = full_data
         
         return redirect(url_for('dashboard'))
