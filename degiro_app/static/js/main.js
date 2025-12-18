@@ -208,8 +208,21 @@ function renderYearTables(year) {
         // Tooltip Logic
         let badge = '';
         if(s.blocked) {
-            badge = `<span class="badge badge-custom bg-danger bg-opacity-25 text-danger border border-danger" 
-                     data-bs-toggle="tooltip" data-bs-placement="top" title="${getTooltipText('BLOQ')}">BLOQUEADO</span>`;
+            if (s.blocked_status === 'active') {
+                badge = `<span class="badge badge-custom bg-danger bg-opacity-25 text-danger border border-danger" 
+                         data-bs-toggle="tooltip" data-bs-placement="top" title="${getTooltipText('BLOQ')}">BLOQUEADO (Hasta ${s.unlock_date})</span>`;
+            } else {
+                 badge = `<span class="badge badge-custom bg-warning bg-opacity-10 text-warning border border-warning" 
+                     data-bs-toggle="tooltip" data-bs-placement="top" title="Bloqueo expirado el ${s.unlock_date}. Ya puedes compensar esta pérdida.">DESBLOQUEADO (${s.unlock_date})</span>`;
+            }
+        } else if (s.wash_sale_risk) {
+            badge = `<span class="badge badge-custom bg-info bg-opacity-25 text-info border border-info" 
+                     data-bs-toggle="tooltip" data-bs-placement="top" 
+                     title="Pérdida deducible actualmente. PRECAUCIÓN: Si recompras este valor antes del ${s.repurchase_safe_date}, esta pérdida pasará a estar BLOQUEADA.">RIESGO RECOMPRA (Hasta ${s.repurchase_safe_date})</span>`;
+        } else if (s.loss_consolidated) {
+            badge = `<span class="badge badge-custom bg-success bg-opacity-10 text-success border border-success" 
+                     data-bs-toggle="tooltip" data-bs-placement="top" 
+                     title="Pérdida firme. Superaste el periodo de 2 meses (${s.repurchase_safe_date}) sin realizar recompras que bloquearan esta pérdida.">DEDUCIBLE</span>`;
         } else if(s.note) {
             let tooltipContent = getTooltipText(s.note);
             let displayNote = s.note.replace('⚠️ NO ADQ ', '');
@@ -217,7 +230,9 @@ function renderYearTables(year) {
                      data-bs-toggle="tooltip" data-bs-placement="top" title="${tooltipContent}">${displayNote}</span>`;
         }
 
-        if(s.blocked) color = 'text-white text-opacity-50 text-decoration-line-through';
+        if(s.blocked && s.blocked_status === 'active') color = 'text-white text-opacity-50 text-decoration-line-through';
+        else if (s.blocked) color = 'text-warning'; // Desbloqueado but was blocked logic (optional, keep readable)
+        
         tbSales.innerHTML += `<tr>
             <td class="ps-3 text-secondary">${parseDate(s.date).toLocaleDateString()}</td>
             <td class="fw-medium">${s.product}</td>

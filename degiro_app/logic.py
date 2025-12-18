@@ -240,11 +240,33 @@ def process_year(df_trans, df_acc, target_year):
                     pnl = sale_proceeds - cost_basis 
 
                 is_blocked = False
+                blocked_status = None
+                unlock_date_str = None
+                wash_sale_risk = False
+                loss_consolidated = False
+                repurchase_safe_date = None
+                
                 if pnl < 0:
                     is_blocked = check_anti_aplicacion(isin, idx, df_trans, min_batch_date)
                     if is_blocked:
-                        event_type = f"⚠️ BLOQ (2 Meses) {event_type}"
+                        event_type = f"⚠️ BLOQ (2 Meses) {event_type}".strip()
                         stats['blocked'] += abs(pnl)
+                        
+                        unlock_date = date + timedelta(days=62)
+                        if datetime.now() < unlock_date:
+                            blocked_status = 'active'
+                        else:
+                            blocked_status = 'released'
+                        unlock_date_str = unlock_date.strftime('%d-%m-%Y')
+                    else:
+                        # Loss not blocked yet
+                        safe_date = date + timedelta(days=62)
+                        repurchase_safe_date = safe_date.strftime('%d-%m-%Y')
+                        
+                        if datetime.now() < safe_date:
+                            wash_sale_risk = True
+                        else:
+                            loss_consolidated = True
 
                 if pnl > 0: stats['wins'] += 1
                 elif pnl < 0: stats['losses'] += 1
@@ -252,7 +274,10 @@ def process_year(df_trans, df_acc, target_year):
                 sales_report.append({
                     'date': row['date'], 'product': prod, 'isin': isin, 'qty': qty_sold,
                     'sale_net': sale_proceeds, 'cost_basis': cost_basis,
-                    'pnl': pnl, 'warning': warning, 'note': event_type, 'blocked': is_blocked
+                    'pnl': pnl, 'warning': warning, 'note': event_type, 'blocked': is_blocked,
+                    'blocked_status': blocked_status, 'unlock_date': unlock_date_str,
+                    'wash_sale_risk': wash_sale_risk, 'loss_consolidated': loss_consolidated,
+                    'repurchase_safe_date': repurchase_safe_date
                 })
 
     divs_report = []
