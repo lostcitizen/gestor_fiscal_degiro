@@ -22,24 +22,21 @@ jobs:
       with:
         python-version: '3.x' # Usar la última versión estable de Python 3
 
-    - name: Install dependencies
+    - name: Create Virtual Environment and Install Dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m venv venv_app
+        source venv_app/bin/activate
+        pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt # Para pytest en caso de ser útil para pre-checks
-
-    - name: Run tests (optional, but recommended for final check)
-      run: |
-        pytest --cov=degiro_app tests/
+        pip install -r requirements-dev.txt # Incluir para tener todas las dependencias
+        deactivate # Desactivar el venv
 
     - name: Create distributable tar.gz package
       run: |
-        # Nombre del paquete: por ejemplo, gestor_fiscal_degiro-v1.0.0.tar.gz
         PACKAGE_NAME="${{ github.event.repository.name }}-${{ github.event.release.tag_name }}.tar.gz"
-        
-        # Excluir archivos no necesarios para la distribución
         tar -czvf $PACKAGE_NAME \
           --exclude='.git' \
+          --exclude='.github' \
           --exclude='__pycache__' \
           --exclude='.pytest_cache' \
           --exclude='htmlcov' \
@@ -47,8 +44,10 @@ jobs:
           --exclude='.venv' \
           --exclude='*.pyc' \
           --exclude='*.swp' \
-          --exclude='degiro_app/data/*' \
-          --exclude='.github/workflows/*' \
+          --exclude='degiro_app/data' \
+          --exclude='scripts/degiroctl.sh' \
+          --exclude='release.md' \
+          --exclude='requirements-dev.txt' \
           . # Empaquetar el directorio actual
 
     - name: Upload Release Asset

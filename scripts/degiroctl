@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# Nombre de la imagen Docker
+IMAGE_NAME="degiro-fiscal-app"
+# Nombre del contenedor Docker
+CONTAINER_NAME="degiro-app-container"
+# Directorio local para la persistencia de datos
+LOCAL_DATA_DIR="./degiro_app/data"
+# Directorio de datos dentro del contenedor
+CONTAINER_DATA_DIR="/app/degiro_app/data"
+# Puerto del host
+HOST_PORT="5000"
+# Puerto del contenedor
+CONTAINER_PORT="5000"
+
+# --- Funciones de control ---
+
+build_image() {
+    echo "--- Construyendo la imagen Docker: $IMAGE_NAME ---"
+    docker build -t "$IMAGE_NAME" .
+    if [ $? -ne 0 ]; then
+        echo "Error: Fallo al construir la imagen Docker."
+        exit 1
+    fi
+}
+
+start_container() {
+    echo "--- Deteniendo y eliminando contenedor anterior si existe: $CONTAINER_NAME ---"
+    docker stop "$CONTAINER_NAME" > /dev/null 2>&1
+    docker rm "$CONTAINER_NAME" > /dev/null 2>&1
+
+    # Crear el directorio local de datos si no existe
+    mkdir -p "$LOCAL_DATA_DIR"
+
+    echo "--- Ejecutando el contenedor Docker: $CONTAINER_NAME ---"
+    echo "Datos persistentes en: $LOCAL_DATA_DIR"
+    echo "Accede a la aplicación en: http://localhost:$HOST_PORT"
+
+    docker run -d \
+               -p "$HOST_PORT":"$CONTAINER_PORT" \
+               -v "$(pwd)/$LOCAL_DATA_DIR":"$CONTAINER_DATA_DIR" \
+               --name "$CONTAINER_NAME" \
+               "$IMAGE_NAME"
+
+    if [ $? -ne 0 ]; then
+        echo "Error: Fallo al ejecutar el contenedor Docker."
+        exit 1
+    fi
+    echo "Contenedor '$CONTAINER_NAME' ejecutándose en segundo plano."
+    echo "Para ver los logs, usa: ./degiroctl logs"
+    echo "Para detenerlo, usa: ./degiroctl stop"
+}
+
+stop_container() {
+    echo "--- Deteniendo contenedor: $CONTAINER_NAME ---"
+    docker stop "$CONTAINER_NAME"
+    if [ $? -ne 0 ]; then
+        echo "Advertencia: Contenedor '$CONTAINER_NAME' no estaba en ejecución o no existe."
+    fi
+}
+
+remove_container() {
+    echo "--- Eliminando contenedor: $CONTAINER_NAME ---"
+    docker rm "$CONTAINER_NAME"
+    if [ $? -ne 0 ]; then
+        echo "Advertencia: Contenedor '$CONTAINER_NAME' no existe."
+    fi
+}
+
+display_logs() {
+    echo "--- Mostrando logs de $CONTAINER_NAME (Ctrl+C para salir) ---"
+    docker logs -f "$CONTAINER_NAME"
+}
+
+display_status() {
+    echo "--- Estado del contenedor $CONTAINER_NAME ---"
+    docker ps -a --filter "name=$CONTAINER_NAME" --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
+}
+
+show_help() {
+    echo "Uso: ./degiroctl [comando]"
+    echo ""
+    echo "Comandos disponibles:"
+    echo "  build     Construye la imagen Docker."
+    echo "  start     Construye la imagen (si es necesario) y ejecuta el contenedor."
+    echo "  stop      Detiene el contenedor en ejecución."
+    echo "  restart   Reinicia el contenedor."
+    echo "  rm        Elimina el contenedor (no la imagen)."
+    echo "  logs      Muestra los logs del contenedor (Ctrl+C para salir)."
+    echo "  status    Muestra el estado del contenedor."
+    echo "  rebuild   Reconstruye la imagen, detiene, elimina y ejecuta el contenedor."
+    echo "  help      Muestra esta ayuda."
+    echo ""
+}
+
+# --- Lógica principal ---
+case "$1" in
+    build)
+        build_image
+        ;;
+    start)
+        build_image
+        start_container
+        ;;
+    stop)
+        stop_container
+        ;;
+    restart)
+        stop_container
+        start_container
+        ;;
+    rm)
+        remove_container
+        ;;
+    logs)
+        display_logs
+        ;;
+    status)
+        display_status
+        ;;
+    rebuild)
+        build_image
+        stop_container
+        remove_container
+        start_container
+        ;;
+    *)
+        show_help
+        ;;
+esac
