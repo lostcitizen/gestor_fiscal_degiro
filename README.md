@@ -1,5 +1,9 @@
 # Gestor Fiscal para DEGIRO (España)
 
+[![CI Build Status](https://github.com/lostcitizen/gestor_fiscal_degiro/actions/workflows/ci.yml/badge.svg)](https://github.com/lostcitizen/gestor_fiscal_degiro/actions/workflows/ci.yml)
+[![Code Coverage](https://codecov.io/gh/lostcitizen/gestor_fiscal_degiro/branch/main/graph/badge.svg)](https://codecov.io/gh/lostcitizen/gestor_fiscal_degiro)
+[![Latest Release](https://img.shields.io/github/v/release/lostcitizen/gestor_fiscal_degiro)](https://github.com/lostcitizen/gestor_fiscal_degiro/releases)
+
 Este proyecto es una aplicación web Flask diseñada para procesar los informes CSV de DEGIRO (`Account.csv` y `Transactions.csv`) y generar un análisis fiscal detallado, optimizado para la declaración de la renta en España.
 
 La aplicación calcula automáticamente ganancias y pérdidas patrimoniales usando el método **FIFO**, aplica la **norma anti-aplicación de los 2 meses** (wash sale rule), y consolida los dividendos y comisiones para ofrecer una visión clara de la situación fiscal anual.

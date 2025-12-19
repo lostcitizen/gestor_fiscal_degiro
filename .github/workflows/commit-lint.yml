@@ -1,0 +1,38 @@
+name: Commit Linting
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+
+permissions:
+  pull-requests: read
+  statuses: write
+
+jobs:
+  commit_lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title with Conventional Commits
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Configuration for Conventional Commits
+          # default: 'build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test'
+          # Puedes personalizar los tipos permitidos, por ejemplo:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
