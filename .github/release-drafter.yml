@@ -1,0 +1,52 @@
+# .github/release-drafter.yml
+# Configuración para release-drafter
+# Documentación: https://github.com/release-drafter/release-drafter
+
+name-template: 'v$NEXT_PATCH_VERSION' # v1.0.1, v1.1.0, v2.0.0 etc.
+tag-template: 'v$NEXT_PATCH_VERSION' # Tag para la release
+
+categories:
+  - title: '🚀 Características Nuevas'
+    labels: ['feature', 'feat']
+  - title: '🐛 Correcciones de Errores'
+    labels: ['bug', 'fix']
+  - title: '🛠️ Mejoras y Refactor'
+    labels: ['refactor', 'perf', 'chore', 'style']
+  - title: '📚 Documentación'
+    labels: ['docs']
+  - title: '🧪 Tests y CI'
+    labels: ['test', 'ci']
+
+change-template: '- $TITLE (#$NUMBER)'
+# Excluir algunos tipos de commits que no son relevantes para el usuario final
+exclude-contributors:
+  - 'github-actions[bot]'
+exclude-labels:
+  - 'skip-changelog' # Etiqueta para commits que no deben aparecer en el changelog
+
+version-resolver:
+  major:
+    labels: ['major']
+  minor:
+    labels: ['minor']
+  patch:
+    labels: ['patch', 'bug', 'fix', 'feature', 'feat']
+  default: patch # Por defecto, si no hay etiquetas, incrementa PATCH
+
+# Si queremos que se cree un borrador de release incluso sin cambios
+# committer: 'github-actions[bot]'
+# commit-message: 'Drafting new release'
+
+# Se puede usar para configurar un prefijo para los mensajes de commit que se usan en las releases
+# header: |
+#   ## Changelog
+#   (Generated with :heart: by Release Drafter)
+#   
+#   ---
+#   
+#   Automatically generated from Pull Requests and Commits.
+
+# Este workflow se dispara en push a main y crea/actualiza un borrador de release
+# que el usuario puede revisar y publicar manualmente.
+# No pushea tags ni publica releases automáticamente.
+# Eso se gestiona manualmente desde la UI de GitHub, revisando el borrador.
