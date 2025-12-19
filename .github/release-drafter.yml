@@ -5,6 +5,15 @@
 name-template: 'v$NEXT_PATCH_VERSION' # v1.0.1, v1.1.0, v2.0.0 etc.
 tag-template: 'v$NEXT_PATCH_VERSION' # Tag para la release
 
+# Define la plantilla general para las notas de la release
+template: |
+  ## Cambios desde la última versión ($PREVIOUS_TAG)
+
+  $CHANGES
+
+  ---
+  **Próxima Versión Sugerida:** `$NEXT_MAJOR_VERSION.$NEXT_MINOR_VERSION.$NEXT_PATCH_VERSION`
+
 categories:
   - title: '🚀 Características Nuevas'
     labels: ['feature', 'feat']
