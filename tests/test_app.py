@@ -1,6 +1,7 @@
 import pytest
+import os
 from degiro_app.app import app as flask_app
-from degiro_app.app import DB_CACHE
+from degiro_app.app import DB_CACHE, PATH_ACC, PATH_TRANS
 from io import BytesIO
 
 @pytest.fixture
@@ -11,8 +12,10 @@ def app():
         "TESTING": True,
     })
 
-    # Limpiamos el cache antes de cada test
+    # Limpiamos el cache y los archivos persistentes antes de cada test
     DB_CACHE.clear()
+    if os.path.exists(PATH_ACC): os.remove(PATH_ACC)
+    if os.path.exists(PATH_TRANS): os.remove(PATH_TRANS)
 
     yield flask_app
 

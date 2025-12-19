@@ -8,10 +8,39 @@ from degiro_app.config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
-app.config.setdefault('UPLOAD_FOLDER', 'degiro_app/uploads')
 
-# Base de datos en memoria
+# Directorio persistente
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+
+PATH_ACC = os.path.join(DATA_DIR, 'Account.csv')
+PATH_TRANS = os.path.join(DATA_DIR, 'Transactions.csv')
+
+# Base de datos en memoria (Cache)
 DB_CACHE = {}
+
+def process_files_from_disk():
+    """Carga y procesa los archivos desde el disco."""
+    try:
+        if not os.path.exists(PATH_ACC) or not os.path.exists(PATH_TRANS):
+            return False
+            
+        with open(PATH_TRANS, 'r', encoding='utf-8') as ft, \
+             open(PATH_ACC, 'r', encoding='utf-8') as fa:
+             
+            # Cargar en streams para no cambiar la firma de logic
+            # Aunque analyze_full_history ya acepta file objects, así que ft/fa sirven directo.
+            full_data = analyze_full_history(ft, fa)
+            
+            if not full_data or 'global' not in full_data: 
+                print("Error: Datos procesados vacíos o estructura inválida.")
+                return False
+                
+            DB_CACHE['data'] = full_data
+            return True
+    except Exception as e:
+        print(f"Error procesando archivos persistentes: {e}")
+        return False
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -21,15 +50,23 @@ def index():
         
         acc_file = request.files['account']
         trans_file = request.files['transactions']
-
-        # Decode the file streams as text
-        acc_stream = io.StringIO(acc_file.stream.read().decode("UTF8"))
-        trans_stream = io.StringIO(trans_file.stream.read().decode("UTF8"))
-
-        # Analizar y guardar en memoria
-        full_data = analyze_full_history(trans_stream, acc_stream)
-        DB_CACHE['data'] = full_data
         
+        # Guardar en disco (sobrescribir)
+        acc_file.save(PATH_ACC)
+        trans_file.save(PATH_TRANS)
+
+        # Procesar
+        if process_files_from_disk():
+            return redirect(url_for('dashboard'))
+        else:
+            return "Error procesando los archivos subidos. Verifique el formato.", 400
+
+    # GET: Verificar si ya existen datos
+    if 'data' in DB_CACHE:
+        return redirect(url_for('dashboard'))
+    
+    # Intentar cargar desde disco si se reinició el servidor
+    if process_files_from_disk():
         return redirect(url_for('dashboard'))
 
     return render_template('index.html')
@@ -37,8 +74,20 @@ def index():
 @app.route('/dashboard')
 def dashboard():
     if 'data' not in DB_CACHE:
+        # Intento de último recurso si se accede directo
+        if process_files_from_disk():
+            return render_template('dashboard.html')
         return redirect(url_for('index'))
+        
     return render_template('dashboard.html')
+
+@app.route('/reset')
+def reset_data():
+    """Borra los datos en memoria y disco."""
+    DB_CACHE.clear()
+    if os.path.exists(PATH_ACC): os.remove(PATH_ACC)
+    if os.path.exists(PATH_TRANS): os.remove(PATH_TRANS)
+    return redirect(url_for('index'))
 
 @app.route('/api/data')
 def get_data():
