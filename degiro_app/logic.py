@@ -302,7 +302,8 @@ def process_year(df_trans, df_acc, target_year):
     clean_divs = []
     for (dt, isin, prod, curr), val in final_divs.items():
         if val['gross'] > 0.01:
-            clean_divs.append({'date': dt, 'product': prod, 'isin': isin, 'currency': curr, 'gross': val['gross'], 'wht': val['wht'], 'net': val['gross'] - val['wht']})
+            net_val = val['gross'] - val['wht']
+            clean_divs.append({'date': dt, 'product': prod, 'isin': isin, 'currency': curr, 'gross': val['gross'], 'wht': val['wht'], 'net': max(0.0, net_val)})
 
     clean_port = []
     port_val = 0

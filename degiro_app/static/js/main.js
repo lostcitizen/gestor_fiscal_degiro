@@ -120,8 +120,19 @@ function initGlobal() {
                 const y = g.years_list[cfg.dataPointIndex]; renderYearView(y); document.getElementById('yearSelect').value = y; 
             }}
         },
-        stroke: { width: [0, 3], curve: 'smooth' }, labels: g.years_list, xaxis: { type: 'category', tooltip: { enabled: false } },
-        yaxis: [{ title: { text: 'P&L Operaciones (€)' }, labels: { formatter: (val) => val.toFixed(0) } }, { opposite: true, title: { text: 'Dividendos (€)' }, labels: { formatter: (val) => val.toFixed(0) } }],
+        stroke: { width: [0, 3], curve: 'straight' }, labels: g.years_list, xaxis: { type: 'category', tooltip: { enabled: false } },
+        yaxis: [
+            { 
+                title: { text: 'P&L Operaciones (€)', style: { color: '#3b82f6' } }, 
+                labels: { formatter: (val) => val.toFixed(0), style: { colors: '#3b82f6' } } 
+            }, 
+            { 
+                opposite: true, 
+                min: 0,
+                title: { text: 'Dividendos (€)', style: { color: '#10b981' } }, 
+                labels: { formatter: (val) => val.toFixed(0), style: { colors: '#10b981' } } 
+            }
+        ],
         colors: ['#3b82f6', '#10b981'], plotOptions: { bar: { borderRadius: 4, columnWidth: '40%' } }, legend: { position: 'top' }, theme: { mode: 'dark' }
     });
     globalChart.render();
