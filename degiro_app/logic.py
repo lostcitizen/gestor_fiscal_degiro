@@ -313,7 +313,8 @@ def process_year(df_trans, df_acc, target_year):
             port_val += cost
             clean_port.append({'name': data['name'], 'isin': isin, 'qty': qty, 'avg_price': cost/qty, 'total_cost': cost})
 
-    total_pnl = sum(s['pnl'] for s in sales_report if not s['blocked'])
+    total_pnl_fiscal = sum(s['pnl'] for s in sales_report if not s['blocked'])
+    total_pnl_real = sum(s['pnl'] for s in sales_report)
 
     return {
         'sales': sales_report, 
@@ -321,7 +322,8 @@ def process_year(df_trans, df_acc, target_year):
         'dividends': clean_divs, 
         'portfolio': clean_port,
         'portfolio_value': port_val, 
-        'total_pnl': total_pnl, 
+        'total_pnl': total_pnl_fiscal, 
+        'total_pnl_real': total_pnl_real,
         'fees': fees_report, 
         'stats': stats
     }
@@ -338,7 +340,7 @@ def analyze_full_history(trans_stream, acc_stream):
     
     years_data = {}
     global_stats = {
-        'total_pnl': 0.0, 'total_divs_net': 0.0, 'total_fees': 0.0,
+        'total_pnl': 0.0, 'total_pnl_real': 0.0, 'total_divs_net': 0.0, 'total_fees': 0.0,
         'years_list': [], 'chart_pnl': [], 'chart_divs': [], 'chart_fees': [],
         'current_portfolio': [], 'current_portfolio_value': 0.0
     }
@@ -359,6 +361,7 @@ def analyze_full_history(trans_stream, acc_stream):
             total_fees = data['fees']['trading'] + data['fees']['connectivity']
             
             global_stats['total_pnl'] += data['total_pnl']
+            global_stats['total_pnl_real'] += data['total_pnl_real']
             global_stats['total_divs_net'] += divs_net
             global_stats['total_fees'] += total_fees
             
