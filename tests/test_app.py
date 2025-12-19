@@ -1,5 +1,6 @@
 import pytest
 import os
+import pandas as pd
 from degiro_app.app import app as flask_app
 from degiro_app.app import DB_CACHE, PATH_ACC, PATH_TRANS
 from io import BytesIO
@@ -68,6 +69,64 @@ def test_download_report_no_data(client):
     response = client.get('/download/2023')
     assert response.status_code == 404
 
+def test_index_post_processing_error(client, mocker):
+    """Test POSTing files that cause a backend processing error."""
+    # Mockear la función de procesamiento para que falle
+    mocker.patch('degiro_app.app.process_files_from_disk', return_value=False)
+    
+    data = {
+        'transactions': (BytesIO(b'corrupt'), 'transactions.csv'),
+        'account': (BytesIO(b'corrupt'), 'account.csv')
+    }
+    
+    response = client.post('/', data=data, content_type='multipart/form-data')
+    assert response.status_code == 400
+    assert b"Error procesando los archivos" in response.data
+
+def test_dashboard_last_resort_redirect(client):
+    """
+    Test GET /dashboard with empty cache and no files on disk.
+    It should try to load, fail, and redirect.
+    """
+    # El fixture 'app' ya se encarga de que no haya nada en cache ni disco
+    response = client.get('/dashboard')
+    assert response.status_code == 302
+    assert response.headers['Location'] == '/'
+def test_download_report_invalid_year(client):
+    """Test downloading a report for a year that does not exist."""
+    # Subir datos válidos primero para que haya cache
+    trans_csv = b'"Fecha","Hora","Producto","ISIN","N\xc3\xbamero","Total (EUR)"\n"05-01-2023","10:00","A","B","1","-10"\n'
+    acc_csv = b''
+    data = {
+        'transactions': (BytesIO(trans_csv), 'transactions.csv'),
+        'account': (BytesIO(acc_csv), 'account.csv')
+    }
+    client.post('/', data=data)
+    
+    # Pedir un año que no está en los datos
+    response = client.get('/download/2099')
+    assert response.status_code == 404
+    assert b"Datos no encontrados" in response.data
+
+def test_index_post_empty_or_invalid_files(client, mocker):
+    """
+    Test POST / with files that are empty or have invalid format,
+    causing load_data_frames to return empty DataFrames.
+    """
+    # Mock load_data_frames to return empty DataFrames
+    mocker.patch('degiro_app.logic.load_data_frames', return_value=(pd.DataFrame(), pd.DataFrame()))
+    
+    # Simulate uploading valid-looking but empty files
+    trans_csv = b'Header\n'
+    acc_csv = b'Header\n'
+    data = {
+        'transactions': (BytesIO(trans_csv), 'transactions.csv'),
+        'account': (BytesIO(acc_csv), 'account.csv')
+    }
+    
+    response = client.post('/', data=data, content_type='multipart/form-data')
+    assert response.status_code == 400
+    assert b"Error procesando los archivos" in response.data
 
 
 def test_full_flow(client):
